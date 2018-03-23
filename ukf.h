@@ -67,9 +67,11 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
-  ///* Normalized Innovation Squared NIS, esp
-  MatrixXd esp;
-  
+  ///* Normalized Innovation Squared NIS, epsilon
+  VectorXd epsilon;
+  float esp;
+  int eps_size;
+
   /**
    * Constructor
    */
@@ -92,6 +94,12 @@ public:
    * @param delta_t Time between k and k+1 in s
    */
   void Prediction(double delta_t);
+
+  /**
+   * Updates the state and the state covariance matrix using a laser measurement
+   * @param meas_package The measurement at k+1
+   */
+  void UpdateLidarUKF(MeasurementPackage meas_package);
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement
