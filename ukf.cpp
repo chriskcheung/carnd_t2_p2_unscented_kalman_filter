@@ -16,7 +16,7 @@ UKF::UKF() {
   use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
-  use_radar_ = false;
+  use_radar_ = true;
 
   // initial state vector
   x_ = VectorXd(5);
@@ -71,8 +71,12 @@ UKF::UKF() {
   //std_yawdd_ = 2.5; 
   //std_a_ = 5; // .12, .10, .52, .34
   //std_yawdd_ = 2.5; 
-  std_a_ = 5.0; // .11, .10, .65, .34
-  std_yawdd_ = 0.7; 
+  //std_a_ = 1.2; // .07, .09, .37, .33
+  //std_yawdd_ = 0.9; 
+  //std_a_ = 5.0; // .07, .09, .37, .33
+  //std_yawdd_ = 0.7; 
+  std_a_ = 3.0; // .07, .09, .37, .33
+  std_yawdd_ = 1.2; 
   
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -146,7 +150,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 		  px = meas_package.raw_measurements_(0);
 		  py = meas_package.raw_measurements_(1);
 		  //is_initialized_ = true;
-		  //cout << "done laser initialization processMeasurement(113)\n";
+		  //cout << "done laser initialization processMeasurement(151)\n";
 	  }
 	  x_ << px, py, 0, 0, 0;
 	  P_ << 1, 0, 0, 0, 0,
@@ -156,7 +160,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 			0, 0, 0, 0, 0;
 			
 	  is_initialized_ = true;
-	  cout << "done initialization processMeasurement(113)\n";
+	  cout << "done initialization processMeasurement(161)\n";
 	  time_us_ = meas_package.timestamp_ ;
       cout << "x_      =\n" << x_ << endl;
       cout << "P_      =\n" << P_ << endl;
@@ -201,7 +205,7 @@ void UKF::Prediction(double delta_t) {
 
   // Calculate X sigma points to start
   MatrixXd Xsig(n_x_, 2*n_x_+1);
-  cout << "inside prediction(153)\n";
+  cout << "inside prediction(206)\n";
   //cout << "delta_t=" << delta_t << endl;
   Xsig.col(0) = x_;
   //cout << "Xsig.col(0)=\n" << Xsig.col(0) << endl;
@@ -250,7 +254,7 @@ void UKF::Prediction(double delta_t) {
 	  while(Xsig_aug(3,i+n_aug_+1) >  M_PI) { Xsig_aug(3,i+n_aug_+1) -= 2*M_PI; }
 	  while(Xsig_aug(3,i+n_aug_+1) < -M_PI) { Xsig_aug(3,i+n_aug_+1) += 2*M_PI; }*/
   }
-  cout << "Xsig_aug prediction(170)\n";
+  cout << "Xsig_aug prediction(255)\n";
   cout << "Xsig_aug=\n" << Xsig_aug << endl;
   
   // use X_aug augmented sigma points and h(x,noise) function to transform Xsig_pred predicted sigma points
@@ -272,7 +276,7 @@ void UKF::Prediction(double delta_t) {
 	  float e4    = 0.5*ttsq*xkny;
 	  float e5    = delta_t*xkny;
 
-      //cout << "Xsig_aug prediction(193)\n";
+      //cout << "Xsig_aug prediction(277)\n";
       //cout << "xk=\n" << xk << endl;
  
 	  if(fabs(xkyd) > 0.001){
@@ -295,7 +299,7 @@ void UKF::Prediction(double delta_t) {
 	  while(Xsig_pred_(3,i) < -M_PI) { Xsig_pred_(3,i) += 2*M_PI; }*/
   } // end of for loop
   
-  cout << "Xsig_pred prediction(204)\n";
+  cout << "Xsig_pred prediction(300)\n";
   cout << "Xsig_pred=\n" << Xsig_pred_ << endl;
   
   // use Xsig_pred predicted sigma points, calculate predicted mean xk+1 (x_ update) and covariance Pk+1|k (P_ update)
@@ -304,7 +308,7 @@ void UKF::Prediction(double delta_t) {
 	  x_ += weights_(i) * Xsig_pred_.col(i);
   }
 
-  //cout << "x_ prediction(210)\n";
+  //cout << "x_ prediction(309)\n";
   P_.fill(0);  // predicted process covariance matrix is the summation of weighted Xsig_pred matrix. so initialize it to 0 before summation
   for(int i=0; i<2*n_aug_+1; i++){
 	  MatrixXd Xx  = Xsig_pred_.col(i) - x_;
@@ -315,7 +319,7 @@ void UKF::Prediction(double delta_t) {
 	  
 	  P_ += weights_(i) * Xx * Xx.transpose();
   }
-  cout << "inside prediction(223)\n";
+  cout << "inside prediction(320)\n";
   cout << "predicted x_=\n" << x_ << endl;
   cout << "predicted P_=\n" << P_ << endl;
  
@@ -335,7 +339,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the lidar NIS.
   */
-  cout << "inside updateLidar(240)\n";
+  cout << "inside updateLidar(340)\n";
   
   // use Xsig_pred predicted sigma points in prediction() and function of h(x) to transform predicted measurement Sk+1|k
   // this is lidar measurement, where z=[px py]
@@ -365,14 +369,14 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   //cout << "updateLidar(321) - K=\n" << K << endl;
   //cout << "updateLidar(321) - new L x=\n" << x_ << endl;
   //cout << "updateLidar(321) - I=\n" << I << endl;
-  cout << "inside UpdateLidar(328)\n";
+  cout << "inside UpdateLidar(370)\n";
   cout << "updated x_=\n" << x_ << endl;
   cout << "updated P_=\n" << P_ << endl;
   
   // NIS epsilon calculation
   esp  = y.transpose()*Si*y;
   epsilon(eps_size++) = esp;
-  cout << "updateLidar(369)\n";
+  cout << "updateLidar(377)\n";
   cout << "newly esp=" << esp << endl;
 }
 
@@ -390,7 +394,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the radar NIS.
   */
-  cout << "inside updateRadar(296)\n";
+  cout << "inside updateRadar(395)\n";
 
   // use Xsig_pred predicted sigma points in prediction() and function of h(x) to transform predicted measurement Sk+1|k
   MatrixXd Zsig = MatrixXd(3, 2*n_aug_+1);
@@ -436,7 +440,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 	   0, 0, std_radrd_*std_radrd_;
   S += R; 
   
-  cout << "updateRadar(343)\n";
+  cout << "updateRadar(441)\n";
   cout << "z_pred=\n" << z_pred << endl;
   cout << "S=\n" << S << endl;
   
@@ -469,7 +473,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 	  T += weights_(i) * Xxd * Zzd.transpose();
   }
 
-  cout << "updateRadar(376)\n";
+  cout << "updateRadar(474)\n";
   cout << "T=\n" << T << endl;
   
   // use T cross-correlation matrix to calculate Kag Kalman gain matrix
@@ -477,7 +481,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //Kag.fill(0.0);
   Kag = T * S.inverse();
   
-  cout << "updateRadar(383)\n";
+  cout << "updateRadar(482)\n";
   cout << "Kag=\n" << Kag << endl;
 
   // use Kag Kalman gain matrix to calculate xk+1|k+1 update state
@@ -492,16 +496,16 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   // calculate Pk+1|k+1 updated covariance matrix
   P_ -= Kag*S*Kag.transpose(); 
 
-  cout << "updateRadar(385)\n";
+  cout << "updateRadar(497)\n";
   cout << "newly updated x_=\n" << x_ << endl;
   cout << "newly updated P_=\n" << P_ << endl;
   
   // NIS epsilon calculation
   esp = zd.transpose()*S.inverse()*zd;
   epsilon(eps_size++) = esp;
-  cout << "updateRadar(4934)\n";
+  cout << "updateRadar(503)\n";
   cout << "newly esp=" << esp << endl;
-}
+} // UpdateRadar
 
 
 

@@ -153,7 +153,7 @@ int main()
           cout << "........................................................RMSE........................................................\n";
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 		  
-		  if (step==499) {
+		  if (step>=498) {
 			  cout << "epsilon=\n" << ukf.epsilon << endl;
 		  }
 	  
