@@ -24,59 +24,12 @@ UKF::UKF() {
   // initial covariance matrix
   P_ = MatrixXd(5, 5);
 
+  // tuned std_a_ and std_yawdd to achieve RSME lower than requirement: px,py,vx,vy|0.9, 0.10, 0.40, 0.20
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  //std_a_ = 0.75;
+  std_a_ = 2.5;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  //std_yawdd_ = 0.01;
-  
-  //requirement: .9, .10, .40, .20
-  //std_a_ = 0.1; // .13, .12, .61, .24 
-  //std_yawdd_ = 0.5; 
-  //std_a_ = 0.4; // .10, .09, .61, .23
-  //std_yawdd_ = 0.4; 
-  //std_a_ = 0.4; // .12, .10, .63, .26
-  //std_yawdd_ = 0.2; 
-  //std_a_ = 0.8; // .10, .09, .60, .24
-  //std_yawdd_ = 0.8; 
-  //std_a_ = 1.6; // .10, .10, .62, .29
-  //std_yawdd_ = 1.6; 
-  //std_a_ = 1.0; // .10, .09, .61, .25
-  //std_yawdd_ = 1.0; 
-  //std_a_ = 1.1; // .10, .09, .60, .24
-  //std_yawdd_ = 0.5; 
-  //std_a_ = 1.2; // .10, .09, .60, .25
-  //std_yawdd_ = 0.9; 
-  //std_a_ = 2.2; // .11, .10, .63, .31
-  //std_yawdd_ = 1.9; 
-  //std_a_ = 3.2; // .11, .10, .65, .36
-  //std_yawdd_ = 2.9; 
-  //std_a_ = 0.75; // .29, .20, .82, .48
-  //std_yawdd_ = 0.05; 
-  //std_a_ = 0.75; // .10, .09, .65, .27
-  //std_yawdd_ = 1.5;  // crashed towards end 
-  //std_a_ = 1.1; // .10, .09, .60, .24
-  //std_yawdd_ = 0.7;
-  //std_a_ = 5; // .12, .10, .48, .26
-  //std_yawdd_ = 0.75; 
-  //std_a_ = 5; // .12, .10, .52, .34
-  //std_yawdd_ = 2.5; 
-  //std_a_ = 3.0; // .15, .09, .56, .23
-  //std_yawdd_ = 1.0; 
-  //std_a_ = 7.0; // .12, .10, .78, .30
-  //std_yawdd_ = 0.8; 
-  //std_a_ = 1.5; // .18, .09, .86, .21
-  //std_yawdd_ = 1.0; 
-  //std_a_ = 5; // .21, .09, .67, .22
-  //std_yawdd_ = 2.5; 
-  //std_a_ = 5; // .12, .10, .52, .34
-  //std_yawdd_ = 2.5; 
-  //std_a_ = 1.2; // .07, .09, .37, .33
-  //std_yawdd_ = 0.9; 
-  //std_a_ = 5.0; // .07, .09, .37, .33
-  //std_yawdd_ = 0.7; 
-  std_a_ = 3.0; // .07, .09, .37, .33
-  std_yawdd_ = 1.2; 
+  std_yawdd_ = 0.5; 
   
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -118,6 +71,18 @@ UKF::UKF() {
   epsilon = VectorXd(500);
   eps_size = 0;
 
+  H_lidar = MatrixXd(2, 5);
+  H_lidar << 1, 0, 0, 0, 0,
+             0, 1, 0, 0, 0;
+  
+  R_lidar = MatrixXd(2, 2);
+  R_lidar << std_laspx_*std_laspx_, 0,
+             0, std_laspy_*std_laspy_;
+
+  R_radar = MatrixXd(3,3);
+  R_radar << std_radr_*std_radr_, 0, 0,
+             0, std_radphi_*std_radphi_, 0,
+	         0, 0, std_radrd_*std_radrd_;
 }
 
 UKF::~UKF() {}
@@ -142,15 +107,10 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 		  float rhd = meas_package.raw_measurements_(2);
 		  px = rho*cos(phi);
 		  py = rho*sin(phi);
-		  //is_initialized_ = true;
-		  //cout << "done radar initialization processMeasurement(113)\n";
 	  }
-	  //else if (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_) {
 	  else {
 		  px = meas_package.raw_measurements_(0);
 		  py = meas_package.raw_measurements_(1);
-		  //is_initialized_ = true;
-		  //cout << "done laser initialization processMeasurement(151)\n";
 	  }
 	  x_ << px, py, 0, 0, 0;
 	  P_ << 1, 0, 0, 0, 0,
@@ -160,18 +120,12 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 			0, 0, 0, 0, 0;
 			
 	  is_initialized_ = true;
-	  cout << "done initialization processMeasurement(161)\n";
 	  time_us_ = meas_package.timestamp_ ;
-      cout << "x_      =\n" << x_ << endl;
-      cout << "P_      =\n" << P_ << endl;
-	  cout << "lambda_ =\n" << lambda_ << endl;
-      //cout << "weights_=\n" << weights_ << endl;
 	  return;
   }
 
   // Predict
   float delta_time = (meas_package.timestamp_ - time_us_) / 1000000.0; //dt - expressed in seconds
-  cout << "mesa time|previous time|delta time=" << meas_package.timestamp_ <<"|"<< time_us_ <<"|"<< delta_time << endl;
   Prediction(delta_time);
 
   // Update
@@ -205,12 +159,8 @@ void UKF::Prediction(double delta_t) {
 
   // Calculate X sigma points to start
   MatrixXd Xsig(n_x_, 2*n_x_+1);
-  cout << "inside prediction(206)\n";
-  //cout << "delta_t=" << delta_t << endl;
   Xsig.col(0) = x_;
-  //cout << "Xsig.col(0)=\n" << Xsig.col(0) << endl;
   MatrixXd A = P_.llt().matrixL();
-  cout << "A=\n" << A << endl;
   for (int i=0; i<n_x_; i++){
 	  Xsig.col(i+1)      = x_ + sqrt(lambda_+n_x_)*A.col(i);
 	  /* a mistake of normalizing angle at sigma point generations. notice that the first angle gets
@@ -225,7 +175,6 @@ void UKF::Prediction(double delta_t) {
 	  while(Xsig(3,i+n_x_+1) >  M_PI) { Xsig(3,i+n_x_+1) -= 2*M_PI; }
 	  while(Xsig(3,i+n_x_+1) < -M_PI) { Xsig(3,i+n_x_+1) += 2*M_PI; }*/
   }
-  //cout << "Xsig=\n" << Xsig << endl;
 
   // Prepare x augmented by adding noise to x vector, then calculate X augmented sigma points
   VectorXd x_aug(n_aug_);   // 7
@@ -254,8 +203,6 @@ void UKF::Prediction(double delta_t) {
 	  while(Xsig_aug(3,i+n_aug_+1) >  M_PI) { Xsig_aug(3,i+n_aug_+1) -= 2*M_PI; }
 	  while(Xsig_aug(3,i+n_aug_+1) < -M_PI) { Xsig_aug(3,i+n_aug_+1) += 2*M_PI; }*/
   }
-  cout << "Xsig_aug prediction(255)\n";
-  cout << "Xsig_aug=\n" << Xsig_aug << endl;
   
   // use X_aug augmented sigma points and h(x,noise) function to transform Xsig_pred predicted sigma points
   for (int i=0; i<2*n_aug_+1; i++){
@@ -276,9 +223,6 @@ void UKF::Prediction(double delta_t) {
 	  float e4    = 0.5*ttsq*xkny;
 	  float e5    = delta_t*xkny;
 
-      //cout << "Xsig_aug prediction(277)\n";
-      //cout << "xk=\n" << xk << endl;
- 
 	  if(fabs(xkyd) > 0.001){
 		  Xsig_pred_(0,i) = xkpx + xkvk/xkyd*( sin(yydt)-sin(xkyw)) + e1,
 		  Xsig_pred_(1,i) = xkpy + xkvk/xkyd*(-cos(yydt)+cos(xkyw)) + e2;
@@ -299,16 +243,12 @@ void UKF::Prediction(double delta_t) {
 	  while(Xsig_pred_(3,i) < -M_PI) { Xsig_pred_(3,i) += 2*M_PI; }*/
   } // end of for loop
   
-  cout << "Xsig_pred prediction(300)\n";
-  cout << "Xsig_pred=\n" << Xsig_pred_ << endl;
-  
   // use Xsig_pred predicted sigma points, calculate predicted mean xk+1 (x_ update) and covariance Pk+1|k (P_ update)
   x_.fill(0);  // predicted mean state is the summation of weighted Xsig_pred matrix columns. so initialize it to 0 before summation
   for(int i=0; i<2*n_aug_+1; i++){
 	  x_ += weights_(i) * Xsig_pred_.col(i);
   }
 
-  //cout << "x_ prediction(309)\n";
   P_.fill(0);  // predicted process covariance matrix is the summation of weighted Xsig_pred matrix. so initialize it to 0 before summation
   for(int i=0; i<2*n_aug_+1; i++){
 	  MatrixXd Xx  = Xsig_pred_.col(i) - x_;
@@ -319,12 +259,9 @@ void UKF::Prediction(double delta_t) {
 	  
 	  P_ += weights_(i) * Xx * Xx.transpose();
   }
-  cout << "inside prediction(320)\n";
-  cout << "predicted x_=\n" << x_ << endl;
-  cout << "predicted P_=\n" << P_ << endl;
  
   return;
-}
+} //Prediction
 
 /**
  * Updates the state and the state covariance matrix using a laser measurement.
@@ -339,20 +276,12 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the lidar NIS.
   */
-  cout << "inside updateLidar(340)\n";
   
   // use Xsig_pred predicted sigma points in prediction() and function of h(x) to transform predicted measurement Sk+1|k
   // this is lidar measurement, where z=[px py]
-  MatrixXd H = MatrixXd(2, 5);
-  H << 1, 0, 0, 0, 0,
-       0, 1, 0, 0, 0;
-  MatrixXd R = MatrixXd(2, 2);
-  R << std_laspx_*std_laspx_, 0,
-       0, std_laspy_*std_laspy_;
-  
-  VectorXd y  = meas_package.raw_measurements_ - H*x_;
-  MatrixXd Ht = H.transpose();
-  MatrixXd S  = H*P_*Ht + R;
+  VectorXd y  = meas_package.raw_measurements_ - H_lidar*x_;
+  MatrixXd Ht = H_lidar.transpose();
+  MatrixXd S  = H_lidar*P_*Ht + R_lidar;
   MatrixXd Si = S.inverse();
   MatrixXd K  = P_*Ht*Si;
   
@@ -360,25 +289,15 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   x_ = x_ + K*y;
   long x_size = x_.size();
   MatrixXd I = MatrixXd::Identity(x_size, x_size);
-  P_ = (I - K*H)*P_;
+  P_ = (I - K*H_lidar)*P_;
 
-  //cout << "updateLidar(321) - y=\n" << y << endl;
-  //cout << "updateLidar(321) - Ht=\n" << Ht << endl;
-  //cout << "updateLidar(321) - S=\n" << S << endl;
-  //cout << "updateLidar(321) - Si=\n" << Si << endl;
-  //cout << "updateLidar(321) - K=\n" << K << endl;
-  //cout << "updateLidar(321) - new L x=\n" << x_ << endl;
-  //cout << "updateLidar(321) - I=\n" << I << endl;
-  cout << "inside UpdateLidar(370)\n";
   cout << "updated x_=\n" << x_ << endl;
   cout << "updated P_=\n" << P_ << endl;
   
   // NIS epsilon calculation
   esp  = y.transpose()*Si*y;
   epsilon(eps_size++) = esp;
-  cout << "updateLidar(377)\n";
-  cout << "newly esp=" << esp << endl;
-}
+} //UpdateLidar
 
 
 /**
@@ -394,7 +313,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the radar NIS.
   */
-  cout << "inside updateRadar(395)\n";
 
   // use Xsig_pred predicted sigma points in prediction() and function of h(x) to transform predicted measurement Sk+1|k
   MatrixXd Zsig = MatrixXd(3, 2*n_aug_+1);
@@ -434,15 +352,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 	  S += weights_(i)*Zzd*Zzd.transpose();
   }
   // add R noise matrix to S measurement covariance
-  MatrixXd R = MatrixXd(3,3);
-  R << std_radr_*std_radr_, 0, 0,
-       0, std_radphi_*std_radphi_, 0,
-	   0, 0, std_radrd_*std_radrd_;
-  S += R; 
-  
-  cout << "updateRadar(441)\n";
-  cout << "z_pred=\n" << z_pred << endl;
-  cout << "S=\n" << S << endl;
+  S += R_radar; 
   
   // calculating Pk+1|k+1 updated covariance matrix, new P_
   // use S predicted measurement covariance to calculate Tk+1|k for cross-correlation matrix
@@ -453,37 +363,23 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 	  VectorXd Xxd = Xsig_pred_.col(i) - x_;
 
 	  // normalize angel in radian after subtraction
-	  while(Xxd(3) >  M_PI){ Xxd(3) -= 2*M_PI; /*cout << "i="<< i << "\t(-) Xxd(3)=" << Xxd(3) << endl;*/ }
-	  while(Xxd(3) < -M_PI){ Xxd(3) += 2*M_PI; /*cout << "i="<< i << "\t(+) Xxd(3)=" << Xxd(3) << endl;*/ }
+	  while(Xxd(3) >  M_PI){ Xxd(3) -= 2*M_PI; }
+	  while(Xxd(3) < -M_PI){ Xxd(3) += 2*M_PI; }
 	  
-	  //cout << "updateRadar(359)" << endl;
-	  //cout << "i="<< i << "\tXxd(3)=" << Xxd(3) << endl;
-
 	  // Zk+1|k,i - zk+1|k 
 	  VectorXd Zzd = Zsig.col(i) - z_pred;
 
 	  // normalize angel in radian after subtraction
-	  while(Zzd(1) >  M_PI){ Zzd(1) -= 2*M_PI; /*cout << "i="<< i << "\t(+) Zzd(3)=" << Zzd(1) << endl;*/ }
-	  while(Zzd(1) < -M_PI){ Zzd(1) += 2*M_PI; /*cout << "i="<< i << "\t(+) Zzd(3)=" << Zzd(1) << endl;*/ }
+	  while(Zzd(1) >  M_PI){ Zzd(1) -= 2*M_PI; }
+	  while(Zzd(1) < -M_PI){ Zzd(1) += 2*M_PI; }
 	  
-	  //cout << "Zzd=\n" << Zzd << endl;
-	  
-	  //MatrixXd Zzt = Zzd.transpose();
-
 	  T += weights_(i) * Xxd * Zzd.transpose();
   }
 
-  cout << "updateRadar(474)\n";
-  cout << "T=\n" << T << endl;
-  
   // use T cross-correlation matrix to calculate Kag Kalman gain matrix
   MatrixXd Kag = MatrixXd(n_x_, 3);
-  //Kag.fill(0.0);
   Kag = T * S.inverse();
   
-  cout << "updateRadar(482)\n";
-  cout << "Kag=\n" << Kag << endl;
-
   // use Kag Kalman gain matrix to calculate xk+1|k+1 update state
   VectorXd zd = (meas_package.raw_measurements_ - z_pred);
   
@@ -496,15 +392,12 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   // calculate Pk+1|k+1 updated covariance matrix
   P_ -= Kag*S*Kag.transpose(); 
 
-  cout << "updateRadar(497)\n";
   cout << "newly updated x_=\n" << x_ << endl;
   cout << "newly updated P_=\n" << P_ << endl;
   
   // NIS epsilon calculation
   esp = zd.transpose()*S.inverse()*zd;
   epsilon(eps_size++) = esp;
-  cout << "updateRadar(503)\n";
-  cout << "newly esp=" << esp << endl;
 } // UpdateRadar
 
 
@@ -523,7 +416,6 @@ void UKF::UpdateLidarUKF(MeasurementPackage meas_package) {
 
   You'll also need to calculate the radar NIS.
   */
-  cout << "inside updateLidarUKF(479)\n";
 
   // use Xsig_pred predicted sigma points in prediction() and function of h(x) to transform predicted measurement Sk+1|k
   MatrixXd Zsig = MatrixXd(2, 2*n_aug_+1);
@@ -551,14 +443,7 @@ void UKF::UpdateLidarUKF(MeasurementPackage meas_package) {
 	  S += weights_(i)*Zzd*Zzd.transpose();
   }
   // add R noise matrix to S measurement covariance
-  MatrixXd R = MatrixXd(2,2);
-  R << std_laspx_*std_laspx_, 0,
-       0, std_laspy_*std_laspy_;
-  S += R; 
-  
-  cout << "updateLidarUKF(512)\n";
-  cout << "z_pred=\n" << z_pred << endl;
-  cout << "S=\n" << S << endl;
+  S += R_lidar; 
   
   // calculating Pk+1|k+1 updated covariance matrix, new P_
   // use S predicted measurement covariance to calculate Tk+1|k for cross-correlation matrix
@@ -572,17 +457,10 @@ void UKF::UpdateLidarUKF(MeasurementPackage meas_package) {
 	  T += weights_(i) * Xxd * Zzd.transpose();
   }
 
-  cout << "updateLidarUKF(528)\n";
-  cout << "T=\n" << T << endl;
-  
   // use T cross-correlation matrix to calculate Kag Kalman gain matrix
   MatrixXd Kag = MatrixXd(n_x_, 2);
-  //Kag.fill(0.0);
   Kag = T * S.inverse();
   
-  cout << "updateLidarUKF(536)\n";
-  cout << "Kag=\n" << Kag << endl;
-
   // use Kag Kalman gain matrix to calculate xk+1|k+1 update state
   VectorXd zd = (meas_package.raw_measurements_ - z_pred);
   
@@ -591,13 +469,10 @@ void UKF::UpdateLidarUKF(MeasurementPackage meas_package) {
   // calculate Pk+1|k+1 updated covariance matrix
   P_ -= Kag*S*Kag.transpose(); 
 
-  cout << "updateLidarUKF(547)\n";
   cout << "newly updated x_=\n" << x_ << endl;
   cout << "newly updated P_=\n" << P_ << endl;
   
   // NIS epsilon calculation
   esp = zd.transpose()*S.inverse()*zd;
   epsilon(eps_size++) = esp;
-  cout << "updateLidarUKF(595)\n";
-  cout << "newly esp=" << esp << endl;
-}
+} //UpdateLidarUKF 

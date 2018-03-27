@@ -71,6 +71,10 @@ public:
   VectorXd epsilon;
   float esp;
   int eps_size;
+  
+  MatrixXd H_lidar;
+  MatrixXd R_lidar;
+  MatrixXd R_radar;
 
   /**
    * Constructor
